@@ -20,6 +20,7 @@ import type { RuntimeDatabase } from "./runtime-database.ts";
 import type { IRuntimePolicyStore, RuntimePolicyRecord } from "./runtime-policy-store.ts";
 import type { IRunLogStore, RunLog, RunLogListInput, RunLogPage, RunLogWriteResult } from "./runtime-store.ts";
 import type { IRuntimeTokenStore, RuntimeTokenRecord } from "./runtime-token-service.ts";
+import type { StatementSync } from "node:sqlite";
 
 import { DatabaseSync } from "node:sqlite";
 import { parseRuntimeActionHttpResult } from "../api/runtime-api.ts";
@@ -410,6 +411,8 @@ export class SqliteOAuthStateStore implements IOAuthStateStore {
 
 export class SqliteRuntimeTokenStore implements IRuntimeTokenStore {
   private readonly database: DatabaseSync;
+  private findByHashStatement?: StatementSync;
+  private markUsedStatement?: StatementSync;
 
   constructor(database: DatabaseSync) {
     this.database = database;
@@ -452,15 +455,13 @@ export class SqliteRuntimeTokenStore implements IRuntimeTokenStore {
   }
 
   async findByHash(tokenHash: string): Promise<RuntimeTokenRecord | undefined> {
-    const row = this.database
-      .prepare(
-        `
-        select ${runtimeTokenColumns}
-        from runtime_tokens
-        where token_hash = ?
-      `,
-      )
-      .get(tokenHash);
+    // Custom migration sources may omit this table until the store is actually used.
+    this.findByHashStatement ??= this.database.prepare(`
+      select ${runtimeTokenColumns}
+      from runtime_tokens
+      where token_hash = ?
+    `);
+    const row = this.findByHashStatement.get(tokenHash);
     return row ? readRuntimeTokenRow(row) : undefined;
   }
 
@@ -490,7 +491,8 @@ export class SqliteRuntimeTokenStore implements IRuntimeTokenStore {
   }
 
   async markUsed(id: string, usedAt: string): Promise<void> {
-    this.database.prepare("update runtime_tokens set last_used_at = ? where id = ?").run(usedAt, id);
+    this.markUsedStatement ??= this.database.prepare("update runtime_tokens set last_used_at = ? where id = ?");
+    this.markUsedStatement.run(usedAt, id);
   }
 }
 
