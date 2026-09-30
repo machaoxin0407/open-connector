@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { performance } from "node:perf_hooks";
 import { DatabaseSync } from "node:sqlite";
 import { readRuntimeTokenRow, runtimeTokenColumns } from "../src/server/storage/runtime-sql.ts";
-import { SqliteRuntimeDatabase, SqliteRuntimeTokenStore } from "../src/server/storage/sqlite-runtime-store.ts";
+import { SqliteRuntimeDatabase, SqliteRuntimeTokenStore } from "../src/server/storage/sqlite/runtime-store.ts";
 
 /** The two store methods before statement reuse, with the same decoding and async boundary. */
 class PreparePerCallTokenStore extends SqliteRuntimeTokenStore {
